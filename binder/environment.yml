@@ -1,0 +1,14 @@
+name: binder-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - jupyterlab
+  - numpy
+  - pandas
+  - matplotlib
+  - scikit-learn
+  - pip
+  - pip:
+    - nbconvert
+    - nbstripout
