@@ -10,7 +10,6 @@ dependencies:
   - scikit-learn
   - pip
   - pip:
-    - -e .
     - nbconvert
     - nbstripout
     # 强制安装 CPU 版 torch；Binder 无 GPU
