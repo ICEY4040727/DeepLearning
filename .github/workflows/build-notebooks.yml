@@ -18,38 +18,103 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies (incl. CPU torch)
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          # 确保 nbconvert 存在（如 requirements 未包含）
           pip install nbconvert
-          # 如果 requirements.txt 未明确 torch 或版本，这里也可强制 CPU 版：
-          # pip install "torch>=2.2" --index-url https://download.pytorch.org/whl/cpu
 
       - name: Convert notebooks in notebooks/ to HTML (preserve structure)
         run: |
           mkdir -p docs
           if [ -d "notebooks" ]; then
             cd notebooks
-            find . -type f -name '*.ipynb' | while read -r nb; do
-              nb_rel="${nb#./}"
-              nb_src="../notebooks/$nb_rel"
-              target_dir="../docs/$(dirname "$nb_rel")"
-              mkdir -p "$target_dir"
-              jupyter nbconvert --to html "$nb_src" --output-dir "$target_dir" || echo "convert failed for $nb_src"
-            done
+            # 递归查找 *.ipynb，跳过 .ipynb_checkpoints 与 index.ipynb（我们自动生成首页）
+            find . -type f -name '*.ipynb' \
+              ! -path "*/.ipynb_checkpoints/*" \
+              ! -name "index.ipynb" \
+              | while read -r nb; do
+                nb_rel="${nb#./}"
+                nb_src="../notebooks/$nb_rel"
+                target_dir="../docs/$(dirname "$nb_rel")"
+                mkdir -p "$target_dir"
+                jupyter nbconvert --to html "$nb_src" --output-dir "$target_dir" || echo "convert failed for $nb_src"
+              done
             cd ..
           else
             echo "No notebooks/ directory found — skipping conversion."
           fi
+
+      - name: Generate docs/index.html (hierarchical TOC) and disable Jekyll
+        run: |
+          python - <<'PY'
+          import os, html, pathlib, sys
+          root = pathlib.Path("docs")
+          root.mkdir(parents=True, exist_ok=True)
+
+          # 收集 docs 下的所有 .html（排除 index.html 自身）
+          html_files = []
+          for p in sorted(root.rglob("*.html")):
+            rel = p.relative_to(root).as_posix()
+            if rel == "index.html":
+              continue
+            html_files.append(rel)
+
+          # 构建目录树
+          tree = {}
+          for rel in html_files:
+            parts = rel.split("/")
+            d = tree
+            for part in parts[:-1]:
+              d = d.setdefault(part, {})
+            d.setdefault("__files__", []).append(parts[-1])
+
+          def render(d, prefix=""):
+            out = []
+            out.append("<ul>")
+            # 先渲染目录
+            for name in sorted(k for k in d.keys() if k != "__files__"):
+              out.append(f"<li><strong>{html.escape(name)}/</strong>")
+              out.extend(render(d[name], f"{prefix}{name}/"))
+              out.append("</li>")
+            # 再渲染文件
+            for fname in sorted(d.get("__files__", [])):
+              href = f"{prefix}{fname}"
+              out.append(f"<li><a href='{html.escape(href)}'>{html.escape(href)}</a></li>")
+            out.append("</ul>")
+            return out
+
+          body = []
+          body.append("<!doctype html><meta charset='utf-8'><title>Notebooks</title>")
+          body.append("""
+          <style>
+            body{font-family:system-ui,Arial;margin:2rem;line-height:1.6}
+            a{color:#0b66ff;text-decoration:none}
+            a:hover{text-decoration:underline}
+            ul{padding-left:1.2rem}
+            .muted{color:#556}
+            code{background:#f4f6f8;padding:0.1rem 0.3rem;border-radius:4px}
+          </style>
+          """)
+          body.append("<h1>Notebooks</h1>")
+          body.append("<p class='muted'>此页面由 GitHub Actions 自动生成。将 <code>notebooks/</code> 下的 <code>.ipynb</code> 转换为 HTML 并保留目录结构。</p>")
+
+          if html_files:
+            body.extend(render(tree))
+          else:
+            body.append("<p>未发现已转换的 HTML 文件。请将 .ipynb 放到 <code>notebooks/</code> 目录并推送到 main。</p>")
+
+          (root / "index.html").write_text("\n".join(body), encoding="utf-8")
+          PY
+          # 禁用 Jekyll，避免对下划线等路径的处理
+          touch docs/.nojekyll
 
       - name: Commit generated docs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs || true
-          git commit -m "Build docs from notebooks" || echo "No changes to commit"
+          git commit -m "Build docs from notebooks (auto-generated index)" || echo "No changes to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
