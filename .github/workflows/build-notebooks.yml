@@ -1,0 +1,55 @@
+name: Build notebooks to docs
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies (incl. CPU torch)
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # 确保 nbconvert 存在（如 requirements 未包含）
+          pip install nbconvert
+          # 如果 requirements.txt 未明确 torch 或版本，这里也可强制 CPU 版：
+          # pip install "torch>=2.2" --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Convert notebooks in notebooks/ to HTML (preserve structure)
+        run: |
+          mkdir -p docs
+          if [ -d "notebooks" ]; then
+            cd notebooks
+            find . -type f -name '*.ipynb' | while read -r nb; do
+              nb_rel="${nb#./}"
+              nb_src="../notebooks/$nb_rel"
+              target_dir="../docs/$(dirname "$nb_rel")"
+              mkdir -p "$target_dir"
+              jupyter nbconvert --to html "$nb_src" --output-dir "$target_dir" || echo "convert failed for $nb_src"
+            done
+            cd ..
+          else
+            echo "No notebooks/ directory found — skipping conversion."
+          fi
+
+      - name: Commit generated docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs || true
+          git commit -m "Build docs from notebooks" || echo "No changes to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

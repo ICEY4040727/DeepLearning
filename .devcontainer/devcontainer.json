@@ -1,0 +1,9 @@
+{
+  "name": "Python Jupyter",
+  "image": "mcr.microsoft.com/vscode/devcontainers/python:0-3.10",
+  "extensions": [
+    "ms-python.python",
+    "ms-toolsai.jupyter"
+  ],
+  "postCreateCommand": "pip install -r requirements.txt || true && pip install -e . || true"
+}
