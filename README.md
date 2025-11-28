@@ -12,26 +12,13 @@
 1. 只是想看、运行或阅读 Notebook 的访客（Usage / 运行示例）  
 2. 想为项目贡献代码或 Notebook 的开发者（Contributor / 开发要求与标准）
 
-📚 在线访问
------------
-
-### 静态查看（无需运行）
-- [nbviewer 查看所有 Notebooks](https://nbviewer.org/github/ICEY4040727/DeepLearning/tree/master/notebooks/)
-
-### 在线运行（可交互）
-- [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ICEY4040727/DeepLearning/master?labpath=notebooks/index.ipynb) - 完整 Jupyter 环境
-- [在 Colab 打开](https://colab.research.google.com/github/ICEY4040727/DeepLearning/blob/master/notebooks/index.ipynb)
-
-### GitHub Pages
-静态 HTML 版本：https://ICEY4040727.github.io/DeepLearning/
-
 快速开始（访客 / 使用者）
 -----------------------
 如果你只想在浏览器中查看或运行 Notebook（无需在本地安装复杂环境），请选择 Binder 或 Gitpod：
 
 - Binder（运行 JupyterLab / Notebook，适合交互式演示，完全免费但为短期会话）  
   点击或访问：  
-  https://mybinder.org/v2/gh/ICEY4040727/DeepLearning/master
+  https://mybinder.org/v2/gh/ICEY4040727/DeepLearning/HEAD
 
 - Gitpod（浏览器中的 VS Code-like 体验，支持扩展、调试、终端等）  
   打开仓库：  
